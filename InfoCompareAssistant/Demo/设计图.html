@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特殊人员排查比对系统 - 兼容稳定版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 自定义下拉框箭头 (纯CSS实现，极其稳定) */
+        .custom-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-position: right 1rem center;
+            background-repeat: no-repeat;
+            background-size: 1.2em 1.2em;
+            padding-right: 2.5rem;
+        }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 font-sans h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20">
+        <div class="h-20 flex items-center justify-center border-b border-slate-800">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center mr-3 shadow-lg shadow-blue-600/30">
+                <i class="fa-solid fa-shield-halved text-white text-xl"></i>
+            </div>
+            <h1 class="text-lg font-bold tracking-wider">人员排查系统</h1>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-3">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn bg-blue-600 text-white shadow-md transform scale-105 w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300">
+                <i class="fa-solid fa-chart-pie w-6 opacity-90"></i> <span class="font-medium">首页概览</span>
+            </button>
+            <button onclick="switchTab('compare')" id="nav-compare" class="nav-btn w-full flex items-center px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition-all duration-300">
+                <i class="fa-solid fa-file-import w-6 opacity-90"></i> <span class="font-medium">一键数据比对</span>
+            </button>
+            <button onclick="switchTab('roster')" id="nav-roster" class="nav-btn w-full flex items-center px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition-all duration-300">
+                <i class="fa-solid fa-address-book w-6 opacity-90"></i> <span class="font-medium">人员底册管理</span>
+            </button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <header class="h-20 bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-between px-8 z-10 sticky top-0 border-b border-slate-100">
+            <h2 id="page-title" class="text-2xl font-bold text-slate-800 tracking-tight">首页概览</h2>
+            <div class="text-sm font-medium text-slate-500 bg-slate-100 px-4 py-2 rounded-full border border-slate-200 shadow-inner">
+                2024年4月22日 星期一
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-auto p-8 relative">
+            
+            <div id="view-dashboard" class="page-view space-y-6 fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center hover:shadow-md transition-shadow">
+                        <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl mr-4"><i class="fa-solid fa-users"></i></div>
+                        <div>
+                            <div class="text-slate-500 text-sm font-medium mb-1">在册特殊人员总数</div>
+                            <div class="text-3xl font-black text-slate-800">1,245 <span class="text-sm font-medium text-slate-400">人</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl shadow-lg shadow-rose-500/30 border border-rose-400 p-6 flex items-center text-white transform hover:-translate-y-1 transition-transform relative overflow-hidden">
+                        <i class="fa-solid fa-triangle-exclamation absolute -right-4 -bottom-4 text-8xl text-white/10"></i>
+                        <div class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl mr-4 z-10"><i class="fa-solid fa-bell"></i></div>
+                        <div class="z-10">
+                            <div class="text-rose-100 text-sm font-medium mb-1">本月新增死亡预警</div>
+                            <div class="text-3xl font-black">8 <span class="text-sm font-medium text-rose-200">待处理</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center hover:shadow-md transition-shadow">
+                        <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center text-2xl mr-4"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                        <div>
+                            <div class="text-slate-500 text-sm font-medium mb-1">上次比对时间</div>
+                            <div class="text-xl font-bold text-slate-800 mt-1">04-15 10:30</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div class="font-bold text-slate-800"><i class="fa-solid fa-list-check mr-2 text-blue-500"></i>最新预警待办</div>
+                    </div>
+                    <div class="p-0">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-slate-500 bg-slate-50 border-b border-slate-100">
+                                    <th class="px-6 py-4 font-semibold">姓名</th>
+                                    <th class="px-6 py-4 font-semibold">身份证号</th>
+                                    <th class="px-6 py-4 font-semibold">所属网格</th>
+                                    <th class="px-6 py-4 font-semibold">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <tr class="hover:bg-blue-50/50 transition-colors group">
+                                    <td class="px-6 py-4 text-rose-600 font-bold">张建国</td>
+                                    <td class="px-6 py-4 text-slate-600 font-mono">420527********1234</td>
+                                    <td class="px-6 py-4 text-slate-600">茅坪镇一社区</td>
+                                    <td class="px-6 py-4"><button onclick="switchTab('compare')" class="text-blue-600 font-medium hover:text-blue-800 bg-blue-50 px-4 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">处理</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-compare" class="page-view hidden space-y-6 fade-in h-full flex flex-col">
+                <div class="bg-white rounded-2xl shadow-sm p-10 border border-slate-100 flex-1 overflow-auto flex flex-col items-center justify-center">
+                    
+                    <div id="step-content-1" class="w-full max-w-md space-y-6 fade-in">
+                        <div class="text-center mb-10">
+                            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner"><i class="fa-solid fa-file-signature"></i></div>
+                            <h3 class="text-2xl font-black text-slate-800">创建比对任务</h3>
+                            <p class="text-slate-500 mt-2 text-sm">登记外部死亡数据的基础信息</p>
+                        </div>
+                        
+                        <div class="space-y-5">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">比对年度/批次</label>
+                                <input type="text" value="2024年4月常规排查" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">数据来源单位</label>
+                                <select class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                                    <option>民政局（火化名单）</option>
+                                    <option>卫健委（死亡证明名单）</option>
+                                    <option>公安局（户籍注销名单）</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">备注说明</label>
+                                <textarea rows="3" placeholder="例如：本批次数据包含各乡镇补报数据..." class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md resize-none"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="pt-6">
+                            <button class="bg-blue-600 text-white px-5 py-3 rounded-xl hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 font-medium flex items-center justify-center w-full text-lg">
+                                下一步：上传 Excel <i class="fa-solid fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-roster" class="page-view hidden space-y-6 h-full flex flex-col fade-in">
+                <div class="bg-white rounded-2xl shadow-sm p-5 border border-slate-100 flex justify-between items-center gap-4 flex-wrap">
+                    <div class="flex space-x-3 flex-1 min-w-[600px]">
+                        <div class="relative w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" placeholder="搜索姓名或身份证号..." class="pl-10 w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md">
+                        </div>
+                        <select class="custom-select w-48 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                            <option value="">全部网格/社区</option>
+                            <option>茅坪镇</option>
+                            <option>归州镇</option>
+                        </select>
+                        <select class="custom-select w-48 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                            <option value="">全部特殊类别</option>
+                            <option>低保</option>
+                            <option>残疾</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button class="bg-white border border-indigo-200 text-indigo-700 px-5 py-2.5 rounded-xl hover:bg-indigo-50 hover:shadow active:scale-95 transition-all duration-200 font-medium flex items-center justify-center">
+                            <i class="fa-solid fa-file-excel mr-2"></i>批量导入
+                        </button>
+                        <button onclick="openModal('addPersonModal')" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 font-medium flex items-center justify-center">
+                            <i class="fa-solid fa-plus mr-2"></i>新增人员
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex-1 overflow-hidden flex flex-col relative">
+                    <div class="overflow-y-auto flex-1 p-0 absolute inset-0">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 shadow-sm z-10 backdrop-blur-md bg-slate-50/90">
+                                <tr class="text-slate-600">
+                                    <th class="px-8 py-5 font-bold tracking-wider">姓名</th>
+                                    <th class="px-8 py-5 font-bold tracking-wider">身份证号</th>
+                                    <th class="px-8 py-5 font-bold tracking-wider">特殊类别</th>
+                                    <th class="px-8 py-5 font-bold tracking-wider">当前状态</th>
+                                    <th class="px-8 py-5 font-bold tracking-wider text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-8 py-5 font-bold text-slate-800">王大拿</td>
+                                    <td class="px-8 py-5 text-slate-500 font-mono">420527********8888</td>
+                                    <td class="px-8 py-5"><span class="bg-blue-100 border border-blue-200 text-blue-700 px-3 py-1 rounded-md text-xs font-bold">低保</span></td>
+                                    <td class="px-8 py-5"><span class="flex items-center text-emerald-600 font-medium text-xs"><div class="w-2 h-2 rounded-full bg-emerald-500 mr-2 shadow-sm shadow-emerald-400"></div>在册</span></td>
+                                    <td class="px-8 py-5 text-right space-x-4">
+                                        <button class="text-slate-400 hover:text-blue-600 transition-colors" title="编辑"><i class="fa-solid fa-pen-to-square text-lg"></i></button>
+                                        <button class="text-slate-400 hover:text-rose-500 transition-colors" title="注销"><i class="fa-solid fa-trash-can text-lg"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
+        <div id="addPersonModal" class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col transform transition-all">
+            <div class="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center"><div class="w-1.5 h-6 bg-blue-600 rounded-full mr-3"></div>新增人员信息</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 w-8 h-8 rounded-full flex items-center justify-center transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="p-8 overflow-y-auto max-h-[65vh]">
+                <form class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">姓名 <span class="text-rose-500 ml-1">*</span></label>
+                        <input type="text" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md" placeholder="输入真实姓名">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">身份证号 <span class="text-rose-500 ml-1">*</span></label>
+                        <input type="text" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md font-mono" placeholder="18位身份证号">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">人员类别 <span class="text-rose-500 ml-1">*</span></label>
+                        <select class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                            <option>低保户</option>
+                            <option>特困人员</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">所属网格 <span class="text-rose-500 ml-1">*</span></label>
+                        <select class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                            <option>茅坪镇一社区</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">详细住址</label>
+                        <textarea rows="2" class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md resize-none" placeholder="输入街道门牌号..."></textarea>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="px-8 py-5 border-t border-slate-100 bg-slate-50 flex justify-end space-x-3 rounded-b-2xl">
+                <button onclick="closeModal()" class="bg-white border border-slate-300 text-slate-700 px-5 py-2.5 rounded-xl hover:bg-slate-50 hover:shadow active:scale-95 transition-all duration-200 font-medium flex items-center justify-center">取消</button>
+                <button onclick="closeModal()" class="bg-blue-600 text-white px-8 py-2.5 rounded-xl hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 font-medium flex items-center justify-center">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const titles = { 'dashboard': '首页概览', 'compare': '一键数据比对', 'roster': '人员底册管理' };
+        function switchTab(tabId) {
+            document.querySelectorAll('.page-view').forEach(el => el.classList.add('hidden'));
+            
+            // 重置所有导航按钮样式
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                // 移除激活状态的类
+                el.classList.remove('bg-blue-600', 'text-white', 'shadow-md', 'transform', 'scale-105');
+                // 添加未激活状态的类
+                el.classList.add('text-slate-400', 'hover:bg-slate-800', 'hover:text-white');
+            });
+            
+            // 显示目标视图
+            document.getElementById('view-' + tabId).classList.remove('hidden');
+            
+            // 设置当前导航激活样式
+            const activeNav = document.getElementById('nav-' + tabId);
+            activeNav.classList.remove('text-slate-400', 'hover:bg-slate-800', 'hover:text-white');
+            activeNav.classList.add('bg-blue-600', 'text-white', 'shadow-md', 'transform', 'scale-105');
+            
+            document.getElementById('page-title').innerText = titles[tabId];
+        }
+        function openModal(modalId) {
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,468 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@inject DashboardService Dashboard
+@inject CompareFlowService Compare
+@inject IJSRuntime JS
+
+<PageTitle>首页概览</PageTitle>
+
+<div class="flex flex-col gap-6 flex-1 min-h-0 overflow-hidden fade-in h-full">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 shrink-0">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center hover:shadow-md transition-shadow">
+            <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl mr-4">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <div>
+                <div class="text-slate-500 text-sm font-medium mb-1">底册有效身份数</div>
+                <div class="text-3xl font-black text-slate-800">
+                    @_totalFormatted <span class="text-sm font-medium text-slate-400">人</span>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl shadow-lg shadow-rose-500/30 border border-rose-400 p-6 flex items-center text-white transform hover:-translate-y-1 transition-transform relative overflow-hidden">
+            <i class="fa-solid fa-triangle-exclamation absolute -right-4 -bottom-4 text-8xl text-white/10"></i>
+            <div class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl mr-4 z-10">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+            <div class="z-10">
+                <div class="text-rose-100 text-sm font-medium mb-1">本月新增死亡预警</div>
+                <div class="text-3xl font-black">
+                    @_alerts <span class="text-sm font-medium text-rose-200">待处理</span>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center hover:shadow-md transition-shadow">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center text-2xl mr-4">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+            <div>
+                <div class="text-slate-500 text-sm font-medium mb-1">上次比对时间</div>
+                <div class="text-xl font-bold text-slate-800 mt-1">@_lastDisplay</div>
+            </div>
+        </div>
+        <a href="/manual" class="group bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex items-center hover:shadow-md hover:border-violet-200 transition-all no-underline text-inherit">
+            <div class="w-14 h-14 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-2xl mr-4 group-hover:bg-violet-100 transition-colors">
+                <i class="fa-solid fa-book-open"></i>
+            </div>
+            <div class="min-w-0">
+                <div class="text-slate-500 text-sm font-medium mb-1">操作文档</div>
+                <div class="text-lg font-bold text-slate-800 group-hover:text-violet-700 transition-colors">使用说明与流程</div>
+                <div class="text-xs text-violet-600 font-medium mt-1 flex items-center gap-1">
+                    点击查看 <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col flex-1 min-h-0">
+        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 bg-slate-50/50 shrink-0">
+            <div class="font-bold text-slate-800">
+                <i class="fa-solid fa-list-check mr-2 text-blue-500"></i>最新预警待办
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" @onclick="ExportPendingAlertsAsync" disabled="@_exportBusy"
+                        class="inline-flex items-center bg-white border border-emerald-200 text-emerald-800 px-4 py-2 rounded-xl text-sm font-medium hover:bg-emerald-50 disabled:opacity-40 transition-colors">
+                    <i class="fa-solid fa-file-export mr-2"></i>导出全部待办
+                </button>
+                <span class="text-xs text-slate-500">每页 @_pageSize 条</span>
+            </div>
+        </div>
+        <div class="flex-1 min-h-0 overflow-y-auto p-0">
+            <table class="w-full text-left text-sm">
+                <thead class="sticky top-0 z-10 shadow-sm bg-slate-50">
+                    <tr class="text-slate-500 border-b border-slate-100">
+                        <th class="px-6 py-4 font-semibold">数据来源单位</th>
+                        <th class="px-6 py-4 font-semibold">姓名</th>
+                        <th class="px-6 py-4 font-semibold">身份证号</th>
+                        <th class="px-6 py-4 font-semibold">特殊类别</th>
+                        <th class="px-6 py-4 font-semibold">所属网格</th>
+                        <th class="px-6 py-4 font-semibold text-right">操作</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    @if (_rows.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-slate-400">暂无待处理预警</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var row in _rows)
+                        {
+                            <tr class="hover:bg-blue-50/50 transition-colors group">
+                                <td class="px-6 py-4 text-slate-600 max-w-[220px] truncate" title="@(row.Batch?.SourceDataUnit ?? "")">@(string.IsNullOrWhiteSpace(row.Batch?.SourceDataUnit) ? "—" : row.Batch!.SourceDataUnit)</td>
+                                <td class="px-6 py-4 text-rose-600 font-bold">@row.Match.Name</td>
+                                <td class="px-6 py-4 text-slate-600 font-mono text-xs">@MaskId(row.Match.IdNumberNorm)</td>
+                                <td class="px-6 py-4 text-slate-600 max-w-[120px] truncate" title="@(row.Match.SpecialCategory ?? "")">@(string.IsNullOrWhiteSpace(row.Match.SpecialCategory) ? "—" : row.Match.SpecialCategory)</td>
+                                <td class="px-6 py-4 text-slate-600">@(row.Match.GridCommunity ?? "—")</td>
+                                <td class="px-6 py-4 text-right">
+                                    <button type="button" @onclick="() => OpenProcess(row)"
+                                            class="text-blue-600 font-medium bg-blue-50 px-4 py-1.5 rounded-lg group-hover:opacity-100 opacity-100 hover:bg-blue-100 transition-colors text-sm">
+                                        处理
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="px-6 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
+            <span>共 @(_total) 条待办 · 第 @(_page + 1) 页 / @(_totalPages) 页</span>
+            <div class="flex gap-2">
+                <button type="button" disabled="@(_page == 0)" @onclick="PrevPage"
+                        class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40">上一页</button>
+                <button type="button" disabled="@(_page >= _totalPages - 1)" @onclick="NextPage"
+                        class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40">下一页</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_showModal && _active != null)
+{
+    <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @onclick="CloseModal"></div>
+        <div class="relative w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden bg-white rounded-2xl shadow-2xl border border-slate-100 z-10 fade-in">
+            <div class="shrink-0 bg-white border-b border-slate-100 px-6 py-4 flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 m-0">处理死亡预警</h3>
+                    <p class="text-xs text-slate-500 m-0 mt-1">本条仅针对列表中对应的特殊身份；请核对后再处理。</p>
+                </div>
+                <button type="button" @onclick="CloseModal" class="text-slate-400 hover:text-rose-500 w-9 h-9 rounded-full flex items-center justify-center shrink-0" aria-label="关闭">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
+                @if (!string.IsNullOrEmpty(_actionError))
+                {
+                    <div class="rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-sm px-4 py-3">@_actionError</div>
+                }
+
+                <div class="rounded-xl border border-indigo-200 bg-indigo-50/50 px-4 py-3 text-sm text-slate-800">
+                    <span class="text-slate-600">本条预警对应的死亡时间：</span>
+                    <span class="font-bold text-indigo-900">@CurrentAlertDeathDisplay</span>
+                </div>
+
+                @if (_deathInsight?.DeathDateAnomaly == true)
+                {
+                    <div class="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-sm px-4 py-3">
+                        <i class="fa-solid fa-triangle-exclamation mr-2"></i>此人死亡时间存在异常，请注意：系统中该身份证号下存在<strong>多条死亡日期不一致</strong>的登记记录，处理前请仔细核对。
+                    </div>
+                }
+                @if (_deathInsight?.HistoryProcessingHint == true)
+                {
+                    <div class="rounded-xl border border-blue-200 bg-blue-50 text-blue-900 text-sm px-4 py-3 space-y-2">
+                        <div><i class="fa-solid fa-clock-rotate-left mr-2"></i>此人存在<strong>多条死亡时间一致的</strong>登记，且<strong>曾有历史预警处理记录</strong>，请注意核实。</div>
+                        @if (_historyRows.Count > 0)
+                        {
+                            <button type="button" @onclick="() => _showHistoryPanel = !_showHistoryPanel"
+                                    class="text-sm font-semibold text-blue-700 hover:underline">
+                                @(_showHistoryPanel ? "收起" : "查看")历史预警处理情况（@(_historyRows.Count) 条）
+                            </button>
+                        }
+                    </div>
+                }
+                else if (_historyRows.Count > 0)
+                {
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm px-4 py-3">
+                        <button type="button" @onclick="() => _showHistoryPanel = !_showHistoryPanel"
+                                class="text-sm font-semibold text-blue-700 hover:underline">
+                            @(_showHistoryPanel ? "收起" : "查看")历史预警处理记录（@(_historyRows.Count) 条）
+                        </button>
+                    </div>
+                }
+                @if (_showHistoryPanel && _historyRows.Count > 0)
+                {
+                    <div class="rounded-xl border border-slate-200 overflow-hidden">
+                        <div class="max-h-72 overflow-x-auto overflow-y-auto text-xs">
+                            <table class="w-full text-left min-w-[720px]">
+                                <thead class="bg-slate-100 text-slate-600 sticky top-0">
+                                    <tr>
+                                        <th class="px-3 py-2 whitespace-nowrap">姓名</th>
+                                        <th class="px-3 py-2 whitespace-nowrap">身份证号</th>
+                                        <th class="px-3 py-2 whitespace-nowrap">特殊身份</th>
+                                        <th class="px-3 py-2 whitespace-nowrap">死亡时间</th>
+                                        <th class="px-3 py-2 whitespace-nowrap">处理结果</th>
+                                        <th class="px-3 py-2 whitespace-nowrap">处理时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-700">
+                                    @foreach (var h in _historyRows)
+                                    {
+                                        <tr>
+                                            <td class="px-3 py-2 font-medium">@h.Name</td>
+                                            <td class="px-3 py-2 font-mono text-[11px]">@h.IdNumberNorm</td>
+                                            <td class="px-3 py-2">@(string.IsNullOrWhiteSpace(h.SpecialCategory) ? "—" : h.SpecialCategory)</td>
+                                            <td class="px-3 py-2 whitespace-nowrap">@(string.IsNullOrWhiteSpace(h.DeathDateDisplay) ? "—" : h.DeathDateDisplay)</td>
+                                            <td class="px-3 py-2">@ProcessHistoryLabel(h.ProcessOutcome)</td>
+                                            <td class="px-3 py-2 whitespace-nowrap">@(h.ProcessedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", _zh) ?? "—")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+                <div>
+                    <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center">
+                        <span class="w-1 h-4 bg-emerald-500 rounded-full mr-2"></span>本条预警对应的底册身份
+                    </h4>
+                    @if (_validPersons.Count == 0)
+                    {
+                        <p class="text-slate-500 text-sm m-0">未找到对应的「有效」底册行（可能已被他人处理或数据已变化）。</p>
+                    }
+                    else
+                    {
+                        <div class="overflow-x-auto rounded-xl border border-slate-100">
+                            <table class="w-full text-left text-xs min-w-[520px]">
+                                <thead class="bg-slate-50 text-slate-500">
+                                    <tr>
+                                        <th class="px-3 py-2">姓名</th>
+                                        <th class="px-3 py-2">身份证号</th>
+                                        <th class="px-3 py-2">特殊类别</th>
+                                        <th class="px-3 py-2">所属网格</th>
+                                        <th class="px-3 py-2">联系方式</th>
+                                        <th class="px-3 py-2">备注</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-700">
+                                    @foreach (var p in _validPersons)
+                                    {
+                                        <tr>
+                                            <td class="px-3 py-2 font-semibold">@p.Name</td>
+                                            <td class="px-3 py-2 font-mono text-[11px]">@p.IdNumber</td>
+                                            <td class="px-3 py-2">@(p.SpecialCategory ?? "—")</td>
+                                            <td class="px-3 py-2">@(p.GridCommunity ?? "—")</td>
+                                            <td class="px-3 py-2">@(p.Contact ?? "—")</td>
+                                            <td class="px-3 py-2 max-w-[140px] truncate" title="@p.Remark">@(p.Remark ?? "—")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center">
+                        <span class="w-1 h-4 bg-rose-500 rounded-full mr-2"></span>本批次登记信息
+                    </h4>
+                    <div class="rounded-xl border border-rose-100 bg-rose-50/30 p-4 text-sm text-slate-700 space-y-2">
+                        <div>
+                            <span class="text-slate-500">数据来源单位：</span>
+                            <span class="text-slate-900 font-medium">@(string.IsNullOrWhiteSpace(_active.Batch?.SourceDataUnit) ? "—" : _active.Batch!.SourceDataUnit)</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500">说明：</span>
+                            <span class="text-slate-900">@(string.IsNullOrWhiteSpace(_active.Batch?.BatchNote) ? "—" : _active.Batch!.BatchNote)</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="shrink-0 border-t border-slate-100 bg-slate-50/80 px-6 py-4 flex flex-wrap items-center gap-2">
+                <button type="button" @onclick="ConfirmRemoveIdentity" disabled="@_actionBusy"
+                        class="bg-gradient-to-br from-rose-500 to-red-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md shadow-rose-500/20 hover:shadow-lg disabled:opacity-50 shrink-0">
+                    移除有效特殊身份
+                </button>
+                <button type="button" @onclick="MarkDeathWrong" disabled="@_actionBusy"
+                        class="bg-white border border-amber-300 text-amber-800 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-amber-50 disabled:opacity-50 shrink-0">
+                    死亡信息有误
+                </button>
+                <div class="relative shrink-0">
+                    <button type="button" @onclick="() => _showActionHelp = !_showActionHelp"
+                            class="w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-blue-600 text-base leading-none flex items-center justify-center"
+                            title="操作说明" aria-expanded="@_showActionHelp">
+                        <span aria-hidden="true">❓</span>
+                    </button>
+                    @if (_showActionHelp)
+                    {
+                        <div class="absolute left-0 bottom-full z-[80] mb-2 w-[min(22rem,calc(100vw-3rem))] max-h-64 overflow-y-auto max-w-[calc(100vw-3rem)] translate-x-1 sm:translate-x-0 rounded-xl border border-slate-200 bg-white shadow-xl p-4 text-xs text-slate-600 text-left">
+                            <p class="m-0 mb-2"><span class="font-bold text-slate-800">移除有效特殊身份：</span>确认死亡名单无误后，将底册中该身份证下仍为「有效」的特殊身份行标为「无效」，并关闭本预警（记录为已确认取消身份）。</p>
+                            <p class="m-0"><span class="font-bold text-slate-800">死亡信息有误：</span>认为本条死亡登记与实际情况不符时选用；不修改底册，仅关闭本预警（记录为死亡信息有误）。</p>
+                            <button type="button" @onclick="() => _showActionHelp = false" class="mt-3 text-blue-600 font-medium hover:underline">知道了</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly System.Globalization.CultureInfo _zh = System.Globalization.CultureInfo.GetCultureInfo("zh-CN");
+    private string _totalFormatted = "0";
+    private int _alerts;
+    private string _lastDisplay = "—";
+
+    private const int _pageSize = 10;
+    private int _page;
+    private int _total;
+    private int _totalPages => Math.Max(1, (int)Math.Ceiling(_total / (double)_pageSize));
+    private List<DashboardService.PendingAlertView> _rows = new();
+
+    private bool _showModal;
+    private DashboardService.PendingAlertView? _active;
+    private List<PersonRegistry> _validPersons = new();
+    private bool _actionBusy;
+    private bool _exportBusy;
+    private bool _showActionHelp;
+    private string? _actionError;
+    private DeathHomeInsight? _deathInsight;
+    private List<ProcessedMatchHistoryRow> _historyRows = new();
+    private bool _showHistoryPanel;
+
+    /// <summary>当前待办预警对应的死亡登记展示时间（来自比对命中记录）。</summary>
+    private string CurrentAlertDeathDisplay =>
+        _active == null || string.IsNullOrWhiteSpace(_active.Match.DeathDateDisplay)
+            ? "—"
+            : _active.Match.DeathDateDisplay.Trim();
+
+    protected override void OnInitialized()
+    {
+        RefreshStats();
+        LoadPage();
+    }
+
+    private void RefreshStats()
+    {
+        var total = Dashboard.GetRegistryTotal();
+        _totalFormatted = total.ToString("N0", _zh);
+        _alerts = Dashboard.GetMonthlyAlertCount();
+        var t = Dashboard.GetLastCompareFinishedAt();
+        _lastDisplay = t.HasValue ? t.Value.ToLocalTime().ToString("MM-dd HH:mm", _zh) : "—";
+    }
+
+    private void LoadPage()
+    {
+        var (tot, list) = Dashboard.GetPendingAlertsPage(_page, _pageSize);
+        _total = tot;
+        _rows = list;
+    }
+
+    private void NextPage()
+    {
+        if (_page >= _totalPages - 1) return;
+        _page++;
+        LoadPage();
+    }
+
+    private void PrevPage()
+    {
+        if (_page == 0) return;
+        _page--;
+        LoadPage();
+    }
+
+    private void OpenProcess(DashboardService.PendingAlertView row)
+    {
+        _actionError = null;
+        _showActionHelp = false;
+        _showHistoryPanel = false;
+        _active = row;
+        _deathInsight = Compare.BuildDeathHomeInsight(row.Match);
+        _historyRows = Compare.GetProcessedDeathAlertHistory(row.Match.IdNumberNorm, row.Match.Id, 50);
+        var one = Compare.GetRegistryPersonForMatch(row.Match);
+        _validPersons = one == null ? new List<PersonRegistry>() : new List<PersonRegistry> { one };
+        _showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        _showModal = false;
+        _active = null;
+        _actionError = null;
+        _showActionHelp = false;
+        _deathInsight = null;
+        _historyRows = new();
+        _showHistoryPanel = false;
+    }
+
+    private static string ProcessHistoryLabel(int outcome) => outcome switch
+    {
+        1 => "已确认取消身份",
+        2 => "死亡信息有误",
+        _ => "—"
+    };
+
+    private async Task ExportPendingAlertsAsync()
+    {
+        _exportBusy = true;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            var bytes = Dashboard.BuildPendingAlertsExportBytes();
+            var b64 = Convert.ToBase64String(bytes);
+            await JS.InvokeVoidAsync("icaDownloadFromBase64", $"预警待办导出_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", b64);
+        }
+        finally
+        {
+            _exportBusy = false;
+        }
+    }
+
+    private async Task ConfirmRemoveIdentity()
+    {
+        if (_active == null) return;
+        _actionBusy = true;
+        _actionError = null;
+        try
+        {
+            Dashboard.ConfirmMatchRevokeFromHome(_active.Match.Id);
+            await CloseAfterSuccessAsync();
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+        }
+        finally
+        {
+            _actionBusy = false;
+        }
+    }
+
+    private async Task MarkDeathWrong()
+    {
+        if (_active == null) return;
+        _actionBusy = true;
+        _actionError = null;
+        var (ok, err) = Compare.MarkDeathInfoWrongForMatch(_active.Match.Id);
+        if (!ok)
+        {
+            _actionError = err;
+            _actionBusy = false;
+            return;
+        }
+        await CloseAfterSuccessAsync();
+        _actionBusy = false;
+    }
+
+    private async Task CloseAfterSuccessAsync()
+    {
+        CloseModal();
+        RefreshStats();
+        LoadPage();
+        if (_rows.Count == 0 && _page > 0)
+        {
+            _page--;
+            LoadPage();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string MaskId(string? id)
+    {
+        if (string.IsNullOrEmpty(id) || id.Length < 10)
+            return id ?? "—";
+        var keep = 4;
+        var head = Math.Min(6, id.Length - keep);
+        var starsLen = Math.Max(0, id.Length - head - keep);
+        return id[..head] + new string('*', starsLen) + id[^keep..];
+    }
+}

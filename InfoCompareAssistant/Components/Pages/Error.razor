@@ -1,0 +1,48 @@
+﻿@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>系统错误</PageTitle>
+
+<div class="max-w-2xl mx-auto fade-in">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-rose-50 to-white flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl shrink-0">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight m-0">处理请求时发生错误</h1>
+                <p class="text-slate-500 text-sm mt-1 m-0">请稍后重试，或联系系统管理员。</p>
+            </div>
+        </div>
+        <div class="p-8 space-y-4 text-slate-600 text-sm leading-relaxed">
+            @if (ShowRequestId)
+            {
+                <div class="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 font-mono text-xs text-slate-700">
+                    <span class="font-semibold text-slate-500 not-italic font-sans text-sm">请求 ID：</span>@RequestId
+                </div>
+            }
+            <p class="m-0">
+                若当前为 <strong class="text-slate-800">开发环境</strong>，启用详细错误页有助于本地调试；生产环境请勿长期开启，以免泄露敏感信息。
+            </p>
+            <p class="m-0 text-slate-500">
+                本地调试可将环境变量 <code class="bg-slate-100 px-2 py-0.5 rounded text-slate-800">ASPNETCORE_ENVIRONMENT</code> 设为 <code class="bg-slate-100 px-2 py-0.5 rounded text-slate-800">Development</code> 后重启应用。
+            </p>
+            <div class="pt-2">
+                <a href="/" class="inline-flex items-center justify-center bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all duration-200 font-medium text-sm no-underline">
+                    <i class="fa-solid fa-house mr-2"></i>返回首页
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

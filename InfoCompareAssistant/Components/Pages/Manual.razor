@@ -1,0 +1,104 @@
+@page "/manual"
+@rendermode InteractiveServer
+
+<PageTitle>操作文档</PageTitle>
+
+<div class="max-w-3xl mx-auto fade-in pb-8 flex-1 min-h-0 overflow-y-auto h-full">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight m-0">操作文档</h1>
+            <p class="text-slate-500 text-sm mt-1 m-0">人员排查系统 · 快速上手指南</p>
+        </div>
+        <a href="/" class="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl border border-blue-100 transition-colors no-underline shrink-0">
+            <i class="fa-solid fa-arrow-left"></i>返回首页
+        </a>
+    </div>
+
+    <div class="space-y-10 text-slate-700 text-[15px] leading-relaxed">
+        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div class="px-5 py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white font-bold text-sm tracking-wide">
+                <i class="fa-solid fa-circle-info mr-2 opacity-90"></i>一、系统能做什么
+            </div>
+            <div class="p-5 space-y-3">
+                <p class="m-0">本系统用于<strong class="text-slate-900">特殊人员底册</strong>与<strong class="text-slate-900">死亡名单</strong>的比对：导入死亡信息后自动与底册中仍为「有效」的身份匹配，生成<strong>待处理预警</strong>，便于工作人员在首页逐项核实并处理。</p>
+                <p class="m-0 text-sm text-slate-500">数据保存在本机，适合单机或内网环境使用。</p>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div class="px-5 py-3 bg-gradient-to-r from-sky-600 to-blue-600 text-white font-bold text-sm tracking-wide">
+                <i class="fa-solid fa-chart-pie mr-2 opacity-90"></i>二、首页概览
+            </div>
+            <div class="p-5 space-y-4">
+                <ul class="list-none m-0 p-0 space-y-3">
+                    <li class="flex gap-3">
+                        <span class="shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">1</span>
+                        <span><strong class="text-slate-900">底册有效身份数</strong>：当前底册中状态为「有效」的记录数量。</span>
+                    </li>
+                    <li class="flex gap-3">
+                        <span class="shrink-0 w-6 h-6 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xs font-bold">2</span>
+                        <span><strong class="text-slate-900">本月新增死亡预警</strong>：本月产生且尚未处理的预警条数（待办）。</span>
+                    </li>
+                    <li class="flex gap-3">
+                        <span class="shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">3</span>
+                        <span><strong class="text-slate-900">上次比对时间</strong>：最近一次完成死亡导入/比对的时间。</span>
+                    </li>
+                    <li class="flex gap-3">
+                        <span class="shrink-0 w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold">4</span>
+                        <span><strong class="text-slate-900">最新预警待办</strong>：列表中点击<strong>处理</strong>可打开弹窗，核对底册与死亡登记后选择「移除有效特殊身份」或「死亡信息有误」。列表区域可上下滚动，数据多时在表格内浏览。</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div class="px-5 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-sm tracking-wide">
+                <i class="fa-solid fa-file-import mr-2 opacity-90"></i>三、一键数据比对
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="m-0">按向导<strong>四步</strong>完成：填写来源与说明 → 上传 Excel → 确认列映射与预览 → 查看比对结果。</p>
+                <p class="m-0 text-sm bg-slate-50 border border-slate-100 rounded-xl px-4 py-3"><strong class="text-slate-800">注意：</strong>导入文件中同一身份证号不能重复；若与历史死亡登记重复，仍可导入并生成预警。处理预警请在<strong>首页概览</strong>的待办中操作。可导出比对结果 Excel。</p>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div class="px-5 py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold text-sm tracking-wide">
+                <i class="fa-solid fa-clock-rotate-left mr-2 opacity-90"></i>四、比对历史
+            </div>
+            <div class="p-5 space-y-3">
+                <p class="m-0">在左侧进入<strong>比对历史</strong>后，可查看各批次的来源单位、说明、导入时间、疑点条数与已处理条数。点击<strong>导入明细数据</strong>或<strong>预警处理明细</strong>在弹窗中查看并可导出 Excel。</p>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div class="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-sm tracking-wide">
+                <i class="fa-solid fa-address-book mr-2 opacity-90"></i>五、人员底册与身份目录
+            </div>
+            <div class="p-5 space-y-4">
+                <p class="m-0"><strong class="text-slate-900">人员底册管理</strong>：查询、新增、编辑、删除与批量导入底册。人员类别、所属网格须从下拉选择；选项在<strong>身份与社区目录</strong>页面维护。</p>
+                <p class="m-0"><strong class="text-slate-900">身份与社区目录</strong>：分别维护「人员类别」与「所属网格/社区」；删除前需确保无底册记录引用该项。</p>
+                <p class="m-0 text-sm bg-amber-50 border border-amber-100 text-amber-900 rounded-xl px-4 py-3">若保存「有效」身份时系统中已有该人死亡登记，系统会先提示确认；确认后会生成待办预警。批量导入时若存在死亡登记则该行失败并写入失败说明。</p>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div class="px-5 py-3 bg-gradient-to-r from-slate-600 to-slate-500 text-white font-bold text-sm tracking-wide">
+                <i class="fa-solid fa-circle-question mr-2 opacity-90"></i>六、常见问题
+            </div>
+            <div class="p-5 space-y-5">
+                <div>
+                    <p class="font-bold text-slate-900 m-0 mb-1">待办列表太长怎么办？</p>
+                    <p class="m-0 text-sm text-slate-600">首页待办表格在卡片内单独滚动，也可使用底部分页与「导出全部待办」。</p>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-900 m-0 mb-1">数据存在哪里？</p>
+                    <p class="m-0 text-sm text-slate-600">数据库位于本机用户目录下的应用数据文件夹（随系统自动备份任务可能另有配置）。</p>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-900 m-0 mb-1">如何查看软件版本与开发者？</p>
+                    <p class="m-0 text-sm text-slate-600">点击页面右上角日期旁的<strong>关于本软件</strong>即可。</p>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

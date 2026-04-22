@@ -1,0 +1,45 @@
+@rendermode InteractiveServer
+@implements IDisposable
+@inject NavigationManager Nav
+@inject AboutDialogState AboutDialog
+
+<div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0">
+    <button type="button" @onclick="RequestAbout"
+            class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 px-3 py-2 sm:px-4 rounded-full border border-slate-200 shadow-sm transition-colors"
+            title="关于本软件">
+        <i class="fa-solid fa-circle-info text-blue-500"></i>
+        <span class="hidden sm:inline">关于本软件</span>
+    </button>
+    <div class="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-2 sm:px-4 rounded-full border border-slate-200 shadow-inner whitespace-nowrap">
+        @_todayLabel
+    </div>
+</div>
+
+@code {
+    private readonly System.Globalization.CultureInfo _zh = System.Globalization.CultureInfo.GetCultureInfo("zh-CN");
+    private string _todayLabel = "";
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        RefreshToday();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(() =>
+    {
+        RefreshToday();
+        StateHasChanged();
+    });
+
+    private void RefreshToday()
+    {
+        _todayLabel = DateTime.Today.ToString("yyyy年M月d日 dddd", _zh);
+    }
+
+    private void RequestAbout() => AboutDialog.Open();
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

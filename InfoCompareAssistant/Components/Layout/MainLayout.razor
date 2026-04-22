@@ -1,0 +1,115 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Nav
+
+<div class="bg-[#F8FAFC] text-slate-800 font-sans h-screen flex overflow-hidden">
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 shrink-0">
+        <div class="h-20 flex items-center justify-center border-b border-slate-800 px-2">
+            <img src="logo.ico" alt="信息比对助手" class="w-10 h-10 object-contain rounded-xl mr-3 shadow-lg shadow-blue-600/20 ring-1 ring-slate-700/50 shrink-0 bg-slate-800" width="40" height="40" />
+            <h1 class="text-lg font-bold tracking-wider">人员排查系统</h1>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-3">
+            <NavLink href="/" Match="NavLinkMatch.All"
+                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:bg-slate-800 hover:text-white"
+                     ActiveClass="!bg-blue-600 !text-white shadow-md scale-105 hover:!bg-blue-600">
+                <i class="fa-solid fa-chart-pie w-6 opacity-90"></i>
+                <span class="font-medium">首页概览</span>
+            </NavLink>
+            <NavLink href="/compare"
+                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:bg-slate-800 hover:text-white"
+                     ActiveClass="!bg-blue-600 !text-white shadow-md scale-105 hover:!bg-blue-600">
+                <i class="fa-solid fa-file-import w-6 opacity-90"></i>
+                <span class="font-medium">一键数据比对</span>
+            </NavLink>
+            <NavLink href="/roster" Match="NavLinkMatch.All"
+                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:bg-slate-800 hover:text-white"
+                     ActiveClass="!bg-blue-600 !text-white shadow-md scale-105 hover:!bg-blue-600">
+                <i class="fa-solid fa-address-book w-6 opacity-90"></i>
+                <span class="font-medium">人员底册管理</span>
+            </NavLink>
+            <NavLink href="/roster/directory" Match="NavLinkMatch.All"
+                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:bg-slate-800 hover:text-white"
+                     ActiveClass="!bg-blue-600 !text-white shadow-md scale-105 hover:!bg-blue-600">
+                <i class="fa-solid fa-list-ul w-6 opacity-90"></i>
+                <span class="font-medium">身份与社区目录</span>
+            </NavLink>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative min-w-0">
+        <header class="h-20 bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-between px-8 z-10 shrink-0 border-b border-slate-100">
+            <div class="flex items-center gap-3.5 min-w-0">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br @HeaderIconGradient text-white shadow-md ring-1 ring-slate-900/5">
+                    <i class="fa-solid @HeaderIconClass text-base drop-shadow-sm"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 tracking-tight truncate m-0">@PageTitle</h2>
+            </div>
+            <AboutSoftware />
+        </header>
+
+        <div class="flex-1 min-h-0 flex flex-col overflow-hidden p-8 relative">
+            <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
+                @Body
+            </div>
+        </div>
+    </main>
+</div>
+
+<AboutSoftwareModal />
+
+<div id="blazor-error-ui" class="text-red-900">
+    发生未处理错误。
+    <a href="" class="reload underline font-semibold">重新加载</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@code {
+    private string CurrentPath =>
+        Nav.ToBaseRelativePath(Nav.Uri).TrimEnd('/').ToLowerInvariant();
+
+    private string PageTitle => CurrentPath switch
+    {
+        "" => "首页概览",
+        "compare" => "一键数据比对",
+        "compare/history" => "比对历史",
+        "roster" => "人员底册管理",
+        "roster/directory" => "身份与社区目录",
+        "manual" => "操作文档",
+        "error" => "系统错误",
+        _ => "人员排查系统"
+    };
+
+    private string HeaderIconClass => CurrentPath switch
+    {
+        "" => "fa-chart-pie",
+        "compare" => "fa-file-arrow-up",
+        "compare/history" => "fa-clock-rotate-left",
+        "roster" => "fa-address-card",
+        "roster/directory" => "fa-sitemap",
+        "manual" => "fa-book-open",
+        "error" => "fa-triangle-exclamation",
+        _ => "fa-shield-halved"
+    };
+
+    private string HeaderIconGradient => CurrentPath switch
+    {
+        "" => "from-sky-500 to-blue-700",
+        "compare" => "from-violet-500 to-indigo-600",
+        "compare/history" => "from-fuchsia-500 to-violet-600",
+        "roster" => "from-emerald-500 to-teal-600",
+        "roster/directory" => "from-cyan-500 to-blue-600",
+        "manual" => "from-violet-500 to-indigo-600",
+        "error" => "from-rose-500 to-amber-600",
+        _ => "from-slate-500 to-slate-800"
+    };
+
+    protected override void OnInitialized() =>
+        Nav.LocationChanged += OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

@@ -1,0 +1,387 @@
+@page "/compare"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Forms
+@inject CompareFlowService Compare
+@inject CompareSessionState Session
+@inject IJSRuntime JS
+
+<PageTitle>一键数据比对</PageTitle>
+
+<div class="space-y-6 fade-in h-full min-h-0 flex flex-col overflow-y-auto">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <div></div>
+        <a href="/compare/history" class="inline-flex items-center justify-center bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 hover:border-blue-200 transition-all no-underline shadow-sm">
+            <i class="fa-solid fa-clock-rotate-left mr-2 text-violet-600"></i>历史记录
+        </a>
+    </div>
+    @if (!string.IsNullOrEmpty(Session.LastError))
+    {
+        <div class="rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 px-5 py-4 text-sm font-medium shadow-sm">
+            <i class="fa-solid fa-circle-exclamation mr-2"></i>@Session.LastError
+        </div>
+    }
+
+    <div class="flex flex-wrap gap-2 text-xs font-semibold">
+        <span class="rounded-full px-3 py-1.5 @(Session.Step == 1 ? "bg-blue-600 text-white shadow" : "bg-slate-100 text-slate-500")">1 来源与说明</span>
+        <span class="rounded-full px-3 py-1.5 @(Session.Step == 2 ? "bg-blue-600 text-white shadow" : "bg-slate-100 text-slate-500")">2 上传文件</span>
+        <span class="rounded-full px-3 py-1.5 @(Session.Step == 3 ? "bg-blue-600 text-white shadow" : "bg-slate-100 text-slate-500")">3 确认导入</span>
+        <span class="rounded-full px-3 py-1.5 @(Session.Step == 4 ? "bg-blue-600 text-white shadow" : "bg-slate-100 text-slate-500")">4 比对结果</span>
+    </div>
+
+    @* 步骤 1：数据来源与说明 *@
+    @if (Session.Step == 1)
+    {
+        <div class="bg-white rounded-2xl shadow-sm p-8 md:p-10 border border-slate-100 flex-1 overflow-auto fade-in">
+            <div class="max-w-xl mx-auto space-y-6">
+                <div class="text-center mb-2">
+                    <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+                        <i class="fa-solid fa-file-signature"></i>
+                    </div>
+                    <h3 class="text-2xl font-black text-slate-800 m-0">填写数据来源与说明</h3>
+                    <p class="text-slate-500 mt-2 text-sm m-0">登记本批次外部死亡数据的基础信息，便于后续追溯。</p>
+                </div>
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">数据来源单位</label>
+                        <input type="text" @bind="Session.SourceUnit" placeholder="如：民政局（火化名单）"
+                               class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">说明 / 备注</label>
+                        <textarea rows="4" @bind="Session.BatchDescription" placeholder="例如：本批次为 2024 年 4 月常规排查补报数据…"
+                                  class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md resize-none"></textarea>
+                    </div>
+                </div>
+                <div class="flex flex-wrap justify-end gap-3 pt-2">
+                    <button type="button" @onclick="Reset"
+                            class="bg-white border border-slate-300 text-slate-700 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all text-sm font-medium">
+                        重新开始
+                    </button>
+                    <button type="button" @onclick="() => Session.Step = 2"
+                            class="bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all text-sm font-medium">
+                        下一步：上传文件 <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* 步骤 2：选择文件 + 模板下载 *@
+    @if (Session.Step == 2)
+    {
+        <div class="bg-white rounded-2xl shadow-sm p-8 md:p-10 border border-slate-100 flex-1 overflow-auto fade-in">
+            <div class="max-w-lg mx-auto space-y-6">
+                <div class="text-center mb-2">
+                    <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+                        <i class="fa-solid fa-file-arrow-up"></i>
+                    </div>
+                    <h3 class="text-2xl font-black text-slate-800 m-0">上传死亡名单 Excel</h3>
+                    <p class="text-slate-500 mt-2 text-sm m-0">支持 .xlsx / .xls，需包含姓名、身份证号、死亡日期等列。</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/api/death-import-template" download="死亡名单导入模板.xlsx" target="_top"
+                       class="inline-flex items-center justify-center bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 hover:border-blue-300 transition-all no-underline">
+                        <i class="fa-solid fa-download mr-2 text-blue-600"></i>下载模板文件
+                    </a>
+                </div>
+                <div class="rounded-2xl border-2 border-dashed border-blue-200 bg-slate-50/80 px-6 py-10 text-center">
+                    <InputFile OnChange="OnFileSelectedAsync" accept=".xlsx,.xls"
+                               class="block w-full text-sm text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer" />
+                    <p class="text-slate-500 text-sm mt-4 m-0">选择文件后将自动识别表头并进入「确认导入」。</p>
+                </div>
+                <div class="flex flex-wrap justify-between gap-3">
+                    <button type="button" @onclick="() => Session.Step = 1"
+                            class="bg-white border border-slate-300 text-slate-700 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all text-sm font-medium">
+                        <i class="fa-solid fa-arrow-left mr-2"></i>上一步
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* 步骤 3：列映射 + 确认执行导入 *@
+    @if (Session.Step == 3)
+    {
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 flex-1 overflow-auto min-h-0 fade-in relative">
+            @if (_importing)
+            {
+                <div class="absolute inset-0 z-20 bg-white/85 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl">
+                    <div class="inline-flex h-12 w-12 rounded-full border-2 border-blue-100 border-t-blue-600 animate-spin mb-4"></div>
+                    <p class="text-slate-800 font-semibold m-0">正在导入并比对…</p>
+                    <p class="text-sm text-slate-500 mt-1 m-0">请稍候，请勿关闭页面</p>
+                </div>
+            }
+            <div class="mb-6">
+                <h3 class="text-xl font-bold text-slate-800 tracking-tight m-0">确认导入数据</h3>
+                <p class="text-slate-500 text-sm mt-1 m-0">核对列映射与预览（前 @(CompareFlowService.DefaultPreviewMaxRows) 行）无误后，开始写入死亡记录并与底册中「有效」身份比对。若表内存在重复身份证号，需先修正并重新上传。</p>
+            </div>
+            @if (_dupList is { Count: > 0 })
+            {
+                <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+                    <div class="font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-id-card-clip"></i>身份证号在文件内存在重复
+                    </div>
+                    <p class="m-0 mt-1">请导出下方明细，在源表中处理重复行后再重新选择文件。修正前无法导入。</p>
+                    <button type="button" @onclick="ExportDuplicateIdsAsync"
+                            class="mt-3 bg-white border border-amber-300 text-amber-900 px-4 py-2 rounded-xl text-sm font-medium hover:bg-amber-100 transition-colors">
+                        <i class="fa-solid fa-file-excel mr-2"></i>导出重复身份证说明
+                    </button>
+                </div>
+            }
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">身份证号列</label>
+                    <select @bind="Session.IdColumn"
+                            class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                        @foreach (var h in Session.Headers)
+                        {
+                            <option value="@h">@h</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">姓名列</label>
+                    <select @bind="Session.NameColumn"
+                            class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                        @foreach (var h in Session.Headers)
+                        {
+                            <option value="@h">@h</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">死亡日期列</label>
+                    <select @bind="Session.DeathDateColumn"
+                            class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                        @foreach (var h in Session.Headers)
+                        {
+                            <option value="@h">@h</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="font-bold text-slate-800 mb-3 text-sm">
+                <i class="fa-solid fa-table mr-2 text-blue-500"></i>数据预览（前 @Math.Min(CompareFlowService.DefaultPreviewMaxRows, Session.PreviewRows.Count) 行）
+            </div>
+            <div class="overflow-x-auto rounded-2xl border border-slate-100 mb-8">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-slate-500 bg-slate-50 border-b border-slate-100">
+                            @foreach (var h in Session.Headers)
+                            {
+                                <th class="px-4 py-3 font-semibold whitespace-nowrap">@h</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @foreach (var row in Session.PreviewRows)
+                        {
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                @foreach (var h in Session.Headers)
+                                {
+                                    <td class="px-4 py-3 text-slate-600 whitespace-nowrap">@(row.TryGetValue(h, out var v) ? v : "")</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex flex-wrap gap-3 justify-between">
+                <button type="button" @onclick="() => Session.Step = 2" disabled="@_importing"
+                        class="bg-white border border-slate-300 text-slate-700 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all text-sm font-medium disabled:opacity-40">
+                    <i class="fa-solid fa-arrow-left mr-2"></i>上一步
+                </button>
+                <button type="button" @onclick="GoCompareAsync" disabled="@(!CanMap || _importing)"
+                        class="bg-blue-600 text-white px-8 py-2.5 rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all text-sm font-medium disabled:opacity-50 disabled:pointer-events-none">
+                    <i class="fa-solid fa-play mr-2"></i>开始导入并比对
+                </button>
+            </div>
+        </div>
+    }
+
+    @* 步骤 4：比对结果 *@
+    @if (Session.Step == 4)
+    {
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 flex-1 overflow-auto min-h-0 fade-in">
+            <div class="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800 tracking-tight m-0">比对结果</h3>
+                    <p class="text-slate-500 text-sm mt-1 m-0">红色高亮为底册中仍为「有效」的命中记录。请前往 <a href="/" class="font-semibold text-blue-600 hover:underline">首页概览</a>，在「最新预警待办」中逐条核对并处理（移除有效特殊身份或标记死亡信息有误等）；本页仅作结果查看与导出。</p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <a href="@($"/api/export/{Session.LastBatchId}")" target="_blank"
+                       class="bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all text-sm font-medium inline-flex items-center justify-center no-underline">
+                        <i class="fa-solid fa-file-export mr-2"></i>导出结果 Excel
+                    </a>
+                    <button type="button" @onclick="Reset"
+                            class="bg-white border border-slate-300 text-slate-700 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all text-sm font-medium">
+                        新的比对
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-2xl border border-slate-100">
+                <table class="w-full text-left text-sm min-w-[760px]">
+                    <thead class="bg-slate-50 border-b border-slate-100">
+                        <tr class="text-slate-500">
+                            <th class="px-4 py-3 font-semibold">姓名</th>
+                            <th class="px-4 py-3 font-semibold">身份证号</th>
+                            <th class="px-4 py-3 font-semibold">死亡日期</th>
+                            <th class="px-4 py-3 font-semibold">底册状态</th>
+                            <th class="px-4 py-3 font-semibold">管辖网格</th>
+                            <th class="px-4 py-3 font-semibold">特殊类别</th>
+                            <th class="px-4 py-3 font-semibold">处理状态</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        @foreach (var m in _matches)
+                        {
+                            <tr class="@RowClass(m)">
+                                <td class="px-4 py-3 font-bold @NameClass(m)">@m.Name</td>
+                                <td class="px-4 py-3 text-slate-600 font-mono text-xs">@m.IdNumberNorm</td>
+                                <td class="px-4 py-3 text-slate-600">@m.DeathDateDisplay</td>
+                                <td class="px-4 py-3 text-slate-600">@m.RegistryStatus</td>
+                                <td class="px-4 py-3 text-slate-600">@m.GridCommunity</td>
+                                <td class="px-4 py-3 text-slate-600">@m.SpecialCategory</td>
+                                <td class="px-4 py-3 text-xs">@ProcessLabel(m)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<CompareMatch> _matches = new();
+    private bool _importing;
+    private List<DuplicateIdEntry>? _dupList;
+
+    private bool CanMap =>
+        !string.IsNullOrWhiteSpace(Session.IdColumn)
+        && !string.IsNullOrWhiteSpace(Session.NameColumn)
+        && !string.IsNullOrWhiteSpace(Session.DeathDateColumn);
+
+    protected override void OnInitialized()
+    {
+        if (Session.Step == 4 && Session.LastBatchId > 0)
+            _matches = Compare.GetMatches(Session.LastBatchId);
+    }
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        Session.LastError = null;
+        _dupList = null;
+        try
+        {
+            var file = e.File;
+            var temp = Path.Combine(Path.GetTempPath(), $"death_{Guid.NewGuid():N}{Path.GetExtension(file.Name)}");
+            await using (var fs = File.Create(temp))
+            {
+                await file.OpenReadStream(50_000_000).CopyToAsync(fs);
+            }
+
+            Session.TempPath = temp;
+            Session.OriginalFileName = file.Name;
+            Compare.FillPreview(temp, Session);
+            Compare.InferColumns(Session);
+            Session.Step = 3;
+        }
+        catch (Exception ex)
+        {
+            Session.LastError = $"读取文件失败：{ex.Message}";
+        }
+    }
+
+    private async Task GoCompareAsync()
+    {
+        if (Session.TempPath == null || !CanMap)
+            return;
+
+        Session.LastError = null;
+        _dupList = null;
+        _importing = true;
+        await InvokeAsync(StateHasChanged);
+        await Task.Yield();
+
+        try
+        {
+            var (ok, message, batchId, dups) = Compare.ImportAndCompare(
+                Session.TempPath,
+                Session.OriginalFileName,
+                Session.IdColumn!,
+                Session.NameColumn!,
+                Session.DeathDateColumn!,
+                Session.SourceUnit,
+                Session.BatchDescription);
+
+            if (!ok)
+            {
+                Session.LastError = message;
+                _dupList = dups;
+                Session.Step = 3;
+                return;
+            }
+
+            Session.LastBatchId = batchId;
+            _matches = Compare.GetMatches(batchId);
+            _dupList = null;
+            Session.Step = 4;
+        }
+        catch (Exception ex)
+        {
+            Session.LastError = ex.Message;
+            _dupList = null;
+            Session.Step = 3;
+        }
+        finally
+        {
+            _importing = false;
+        }
+    }
+
+    private async Task ExportDuplicateIdsAsync()
+    {
+        if (_dupList == null || _dupList.Count == 0)
+            return;
+        var bytes = Compare.BuildDuplicateIdsExport(_dupList);
+        var b64 = Convert.ToBase64String(bytes);
+        await JS.InvokeVoidAsync("icaDownloadFromBase64", $"重复身份证_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", b64);
+    }
+
+    private static string ProcessLabel(CompareMatch m) => m.ProcessOutcome switch
+    {
+        0 => "待处理",
+        1 => "已处理·已取消身份",
+        2 => "已处理·死亡信息有误",
+        _ => "—"
+    };
+
+    private string RowClass(CompareMatch m) => m.ProcessOutcome == 0
+        ? "bg-rose-50/60 hover:bg-rose-50 transition-colors"
+        : "hover:bg-slate-50/80 transition-colors";
+
+    private string NameClass(CompareMatch m) => m.ProcessOutcome == 0 ? "text-rose-700" : "text-slate-800";
+
+    private void Reset()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Session.TempPath) && File.Exists(Session.TempPath))
+                File.Delete(Session.TempPath);
+        }
+        catch
+        {
+            // ignore
+        }
+
+        Session.Reset();
+        _matches = new();
+        _importing = false;
+        _dupList = null;
+    }
+}

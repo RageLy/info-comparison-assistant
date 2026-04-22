@@ -1,0 +1,21 @@
+﻿<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>未找到</PageTitle>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <div class="max-w-lg mx-auto text-center fade-in py-16">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center text-3xl mx-auto mb-6">
+                    <i class="fa-solid fa-compass"></i>
+                </div>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight m-0">未找到页面</h1>
+                <p class="text-slate-500 text-sm mt-3 mb-8">请从左侧导航返回已有功能模块。</p>
+                <a href="/" class="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 hover:shadow-lg transition-all duration-200 font-medium no-underline">
+                    <i class="fa-solid fa-chart-pie mr-2"></i>回到首页概览
+                </a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

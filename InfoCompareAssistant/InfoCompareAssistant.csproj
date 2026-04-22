@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>WinExe</OutputType>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 资源管理器中的 exe 图标、任务栏分组时更稳定 -->
+    <ApplicationIcon>logo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
+    <PackageReference Include="MiniExcel" Version="1.43.1" />
+    <PackageReference Include="Photino.NET" Version="4.0.16" />
+    <PackageReference Include="SqlSugarCore" Version="5.1.4.214" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,733 @@
+@page "/roster"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Forms
+@inject RegistryService Registry
+@inject IJSRuntime JS
+
+<PageTitle>人员底册管理</PageTitle>
+
+<div class="space-y-6 h-full flex flex-col min-h-0 fade-in overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-sm p-5 border border-slate-100 flex justify-between items-center gap-4 flex-wrap shrink-0">
+        <div class="flex flex-wrap gap-3 flex-1 min-w-0">
+            <div class="relative w-full sm:w-64 min-w-[200px]">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                <input type="text" placeholder="搜索姓名或身份证号…"
+                       class="pl-10 w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md"
+                       @bind="_keyword" @bind:event="oninput" />
+            </div>
+            <select @bind="_gridFilter"
+                    class="custom-select w-full sm:w-48 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                <option value="">全部网格/社区</option>
+                @foreach (var g in _grids)
+                {
+                    <option value="@g">@g</option>
+                }
+            </select>
+            <select @bind="_categoryFilter"
+                    class="custom-select w-full sm:w-48 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                <option value="">全部特殊类别</option>
+                @foreach (var c in _categories)
+                {
+                    <option value="@c">@c</option>
+                }
+            </select>
+            <select @bind="_statusFilter"
+                    class="custom-select w-full sm:w-40 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer"
+                    title="不选为全部；有效/无效为筛选底册行状态">
+                <option value="">全部状态</option>
+                <option value="有效">有效</option>
+                <option value="无效">无效</option>
+            </select>
+            <button type="button" @onclick="RunQuery"
+                    class="bg-slate-800 text-white px-5 py-2.5 rounded-xl hover:bg-slate-900 hover:shadow-md active:scale-95 transition-all duration-200 font-medium flex items-center justify-center min-w-[96px]">
+                <i class="fa-solid fa-magnifying-glass mr-2 text-sm"></i>查询
+            </button>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            <button type="button" @onclick="ExportRosterAsync" disabled="@_exportBusy"
+                    class="bg-white border border-emerald-200 text-emerald-800 px-5 py-2.5 rounded-xl hover:bg-emerald-50 hover:shadow active:scale-95 transition-all duration-200 font-medium flex items-center justify-center disabled:opacity-40"
+                    title="按当前选择的筛选条件导出（与上方输入框、下拉选项一致；无需先点查询）">
+                <i class="fa-solid fa-file-export mr-2"></i>导出底册
+            </button>
+            <button type="button" @onclick="OpenBatchImportModal"
+                    class="bg-white border border-indigo-200 text-indigo-700 px-5 py-2.5 rounded-xl hover:bg-indigo-50 hover:shadow active:scale-95 transition-all duration-200 font-medium flex items-center justify-center"
+                    title="上传 Excel 批量维护底册">
+                <i class="fa-solid fa-layer-group mr-2"></i>批量管理
+            </button>
+            <button type="button" @onclick="OpenNew"
+                    class="bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 font-medium flex items-center justify-center">
+                <i class="fa-solid fa-plus mr-2"></i>新增人员
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex-1 overflow-hidden flex flex-col relative min-h-[320px]">
+        <div class="overflow-y-auto flex-1 p-0 absolute inset-0">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 shadow-sm z-10 backdrop-blur-md bg-slate-50/90">
+                    <tr class="text-slate-600">
+                        <th class="px-8 py-5 font-bold tracking-wider">姓名</th>
+                        <th class="px-8 py-5 font-bold tracking-wider">身份证号</th>
+                        <th class="px-8 py-5 font-bold tracking-wider">特殊类别</th>
+                        <th class="px-8 py-5 font-bold tracking-wider">身份状态</th>
+                        <th class="px-8 py-5 font-bold tracking-wider max-w-[200px]">备注</th>
+                        <th class="px-8 py-5 font-bold tracking-wider text-right">操作</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @foreach (var p in _items)
+                    {
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-8 py-5 font-bold text-slate-800">@p.Name</td>
+                            <td class="px-8 py-5 text-slate-500 font-mono text-xs">@MaskId(p.IdNumber)</td>
+                            <td class="px-8 py-5">
+                                <span class="bg-blue-100 border border-blue-200 text-blue-700 px-3 py-1 rounded-md text-xs font-bold">@(string.IsNullOrWhiteSpace(p.SpecialCategory) ? "—" : p.SpecialCategory)</span>
+                            </td>
+                            <td class="px-8 py-5">
+                                @if (p.Status == "有效")
+                                {
+                                    <span class="flex items-center text-emerald-600 font-medium text-xs">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2 shadow-sm shadow-emerald-400"></span>有效
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="flex items-center text-slate-500 font-medium text-xs">
+                                        <span class="w-2 h-2 rounded-full bg-slate-400 mr-2"></span>无效
+                                    </span>
+                                }
+                            </td>
+                            <td class="px-8 py-5 text-slate-500 text-xs max-w-[220px] truncate" title="@p.Remark">@(string.IsNullOrWhiteSpace(p.Remark) ? "—" : p.Remark)</td>
+                            <td class="px-8 py-5 text-right space-x-4 whitespace-nowrap">
+                                <button type="button" class="text-slate-400 hover:text-blue-600 transition-colors" title="编辑" @onclick="() => Edit(p)">
+                                    <i class="fa-solid fa-pen-to-square text-lg"></i>
+                                </button>
+                                <button type="button" class="text-slate-400 hover:text-rose-500 transition-colors" title="删除" @onclick="() => DeletePerson(p)">
+                                    <i class="fa-solid fa-trash-can text-lg"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600 shrink-0">
+        <span>第 @(_page + 1) 页 / 共 @(_totalPages) 页（@_total 条）</span>
+        <div class="flex gap-2">
+            <button type="button" disabled="@(_page == 0)" @onclick="Prev"
+                    class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-all font-medium">
+                上一页
+            </button>
+            <button type="button" disabled="@(_page >= _totalPages - 1)" @onclick="Next"
+                    class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-all font-medium">
+                下一页
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (_showBatchImport)
+{
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 fade-in">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[92vh] border border-slate-100">
+            <div class="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl shrink-0">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center m-0">
+                        <span class="w-1.5 h-5 bg-indigo-600 rounded-full mr-2.5"></span>
+                        批量导入底册
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1 m-0">支持 .xlsx / .xls，拖拽或点击上传后确认导入</p>
+                </div>
+                <button type="button" @onclick="CloseBatchImportModal" disabled="@(_batchPhase == BatchImportPhase.Importing)"
+                        class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 w-9 h-9 rounded-full flex items-center justify-center transition-colors disabled:opacity-30">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5">
+                @if (_batchPhase is BatchImportPhase.Pick or BatchImportPhase.Ready)
+                {
+                    <div class="flex flex-wrap gap-2">
+                        <a href="/api/roster-import-template" download="人员底册导入模板.xlsx" target="_top"
+                           class="inline-flex items-center justify-center bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 hover:border-blue-300 transition-all no-underline">
+                            <i class="fa-solid fa-download mr-2 text-blue-600"></i>下载模板文件
+                        </a>
+                    </div>
+
+                    <div class="relative rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 hover:border-blue-300 hover:bg-blue-50/30 transition-colors min-h-[200px] flex flex-col items-center justify-center text-center px-4 py-8">
+                        <InputFile @key="_batchInputKey" OnChange="OnBatchFileSelected" accept=".xlsx,.xls"
+                                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                        <div class="pointer-events-none z-0">
+                            <div class="w-14 h-14 rounded-2xl bg-white border border-slate-200 text-blue-600 flex items-center justify-center text-2xl mx-auto mb-3 shadow-sm">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <p class="text-slate-700 font-semibold text-sm m-0">点击选择文件或将文件拖入此区域</p>
+                            <p class="text-slate-400 text-xs mt-2 m-0">单文件，最大约 50 MB</p>
+                        </div>
+                    </div>
+
+                    @if (_batchPhase == BatchImportPhase.Ready && !string.IsNullOrEmpty(_pendingBatchFileName))
+                    {
+                        <div class="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-900">
+                            <i class="fa-solid fa-file-excel text-emerald-600 text-lg"></i>
+                            <div class="min-w-0 flex-1 text-left">
+                                <div class="font-semibold truncate">@_pendingBatchFileName</div>
+                                <div class="text-xs text-emerald-700/80">已就绪，点击下方「确认新增」开始导入</div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (_batchPhase == BatchImportPhase.Importing)
+                {
+                    <div class="py-6 text-center">
+                        <div class="inline-flex h-12 w-12 rounded-full border-2 border-blue-100 border-t-blue-600 animate-spin mb-4"></div>
+                        <p class="text-slate-800 font-semibold m-0">正在导入…</p>
+                        <p class="text-sm text-slate-500 mt-1 m-0">@_importCaption</p>
+                        @if (_importTotal > 0)
+                        {
+                            <div class="mt-5 max-w-md mx-auto">
+                                <div class="flex justify-between text-xs text-slate-500 mb-1.5">
+                                    <span>进度</span>
+                                    <span class="font-mono font-medium text-slate-700">@_importProcessed / @_importTotal</span>
+                                </div>
+                                <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                                    <div class="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-[width] duration-200 ease-out"
+                                         style="width: @(ImportPercent)%"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (_batchPhase == BatchImportPhase.Done && _lastBatchResult != null)
+                {
+                    <div class="space-y-4">
+                        @if (!_lastBatchResult.CanImportRows)
+                        {
+                            <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                                <div class="font-bold mb-1"><i class="fa-solid fa-circle-xmark mr-1"></i>无法完成导入</div>
+                                <ul class="list-disc list-inside m-0 pl-1 space-y-1">
+                                    @foreach (var msg in _lastBatchResult.FatalMessages)
+                                    {
+                                        <li>@msg</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-700 space-y-1.5">
+                                <div class="font-bold text-slate-800 text-base m-0">导入结果</div>
+                                <div>成功写入 / 更新：<span class="font-semibold text-emerald-700">@_lastBatchResult.Upserted</span> 条</div>
+                                <div>表格数据行：<span class="font-mono">@_lastBatchResult.TotalRows</span></div>
+                                @if (_lastBatchResult.SkippedBlankId > 0)
+                                {
+                                    <div class="text-slate-500">跳过（空身份证号）：@_lastBatchResult.SkippedBlankId 行</div>
+                                }
+                                @if (_lastBatchResult.Failures.Count > 0)
+                                {
+                                    <div class="text-rose-700 font-medium">失败：@_lastBatchResult.Failures.Count 行（可导出明细）</div>
+                                }
+                            </div>
+
+                            @if (_lastBatchResult.Failures.Count > 0)
+                            {
+                                <div class="rounded-xl border border-slate-100 max-h-40 overflow-y-auto">
+                                    <table class="w-full text-left text-xs">
+                                        <thead class="bg-slate-50 text-slate-500 sticky top-0">
+                                            <tr>
+                                                <th class="px-3 py-2 font-semibold">行号</th>
+                                                <th class="px-3 py-2 font-semibold">说明</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100 text-slate-600">
+                                            @foreach (var f in _lastBatchResult.Failures.Take(50))
+                                            {
+                                                <tr>
+                                                    <td class="px-3 py-2 font-mono">@f.ExcelRow</td>
+                                                    <td class="px-3 py-2">@f.Message</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                    @if (_lastBatchResult.Failures.Count > 50)
+                                    {
+                                        <div class="text-center text-xs text-slate-400 py-2">仅展示前 50 条，完整列表请导出</div>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/80 rounded-b-2xl flex flex-wrap gap-2 justify-end shrink-0">
+                @if (_batchPhase is BatchImportPhase.Pick or BatchImportPhase.Ready)
+                {
+                    <button type="button" @onclick="CloseBatchImportModal"
+                            class="bg-white border border-slate-300 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all">
+                        关闭
+                    </button>
+                    @if (_batchPhase == BatchImportPhase.Ready)
+                    {
+                        <button type="button" @onclick="ClearBatchFileSelection"
+                                class="bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all">
+                            重新选择
+                        </button>
+                        <button type="button" @onclick="ConfirmBatchImportAsync"
+                                class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 shadow-md hover:shadow-lg transition-all">
+                            <i class="fa-solid fa-check mr-2"></i>确认新增
+                        </button>
+                    }
+                }
+                else if (_batchPhase == BatchImportPhase.Importing)
+                {
+                    <button type="button" @onclick="CancelBatchImport"
+                            class="bg-white border border-rose-200 text-rose-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-rose-50 transition-all">
+                        取消导入
+                    </button>
+                }
+                else if (_batchPhase == BatchImportPhase.Done && _lastBatchResult != null)
+                {
+                    @if (_lastBatchResult.Failures.Count > 0)
+                    {
+                        <button type="button" @onclick="ExportFailureReportAsync"
+                                class="bg-white border border-indigo-200 text-indigo-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-50 transition-all">
+                            <i class="fa-solid fa-file-export mr-2"></i>导出失败明细
+                        </button>
+                    }
+                    <button type="button" @onclick="CloseBatchImportModal"
+                            class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition-all">
+                        完成
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showEditor)
+{
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl shrink-0">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center">
+                    <span class="w-1.5 h-6 bg-blue-600 rounded-full mr-3"></span>
+                    @(_edit.Id == 0 ? "新增人员信息" : "编辑人员信息")
+                </h3>
+                <button type="button" @onclick="CloseEditor" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <EditForm Model="_edit" OnValidSubmit="SaveAsync">
+                <div class="p-8 overflow-y-auto max-h-[65vh]">
+                    @if (!string.IsNullOrEmpty(_saveError))
+                    {
+                        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-sm px-4 py-3">@_saveError</div>
+                    }
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">姓名 <span class="text-rose-500 ml-1">*</span></label>
+                            <input type="text" @bind="_edit.Name"
+                                   class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md"
+                                   placeholder="输入真实姓名" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">身份证号 <span class="text-rose-500 ml-1">*</span></label>
+                            <input type="text" @bind="_edit.IdNumber"
+                                   class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md font-mono"
+                                   placeholder="18位身份证号" />
+                        </div>
+                        @if (_edit.Id > 0)
+                        {
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">添加时间</label>
+                                <div class="w-full bg-slate-100 border border-slate-200 text-slate-600 text-sm rounded-xl px-4 py-2.5 font-mono">
+                                    @_edit.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", _zh)
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1 m-0">系统记录，不可修改</p>
+                            </div>
+                        }
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">人员类别 <span class="text-rose-500 ml-1">*</span></label>
+                            <select @bind="_edit.SpecialCategory"
+                                    class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                                <option value="">请选择</option>
+                                @foreach (var c in _categories)
+                                {
+                                    <option value="@c">@c</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">所属网格 <span class="text-rose-500 ml-1">*</span></label>
+                            <select @bind="_edit.GridCommunity"
+                                    class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                                <option value="">请选择</option>
+                                @foreach (var g in _grids)
+                                {
+                                    <option value="@g">@g</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">联系方式</label>
+                            <input type="text" @bind="_edit.Contact"
+                                   class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md"
+                                   placeholder="手机或固话" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">特殊身份状态 <span class="text-rose-500 ml-1">*</span></label>
+                            <select @bind="_edit.Status"
+                                    class="custom-select w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md cursor-pointer">
+                                <option value="有效">有效</option>
+                                <option value="无效">无效</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-semibold text-slate-600 mb-1.5 tracking-wide">备注</label>
+                            <textarea rows="3" @bind="_edit.Remark"
+                                      class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none transition-all duration-300 shadow-sm placeholder-slate-400 hover:border-blue-400 hover:bg-white focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:shadow-md resize-none"
+                                      placeholder="可填写帮扶说明、数据来源等"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-8 py-5 border-t border-slate-100 bg-slate-50 flex justify-end space-x-3 rounded-b-2xl shrink-0">
+                    <button type="button" @onclick="CloseEditor"
+                            class="bg-white border border-slate-300 text-slate-700 px-5 py-2.5 rounded-xl hover:bg-slate-50 hover:shadow active:scale-95 transition-all duration-200 font-medium">
+                        取消
+                    </button>
+                    <button type="submit"
+                            class="bg-blue-600 text-white px-8 py-2.5 rounded-xl hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 font-medium">
+                        保存
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private enum BatchImportPhase { Pick, Ready, Importing, Done }
+
+    private readonly System.Globalization.CultureInfo _zh = System.Globalization.CultureInfo.GetCultureInfo("zh-CN");
+    private readonly int _pageSize = 15;
+    private int _page;
+    private int _total;
+    private int _totalPages => Math.Max(1, (int)Math.Ceiling(_total / (double)_pageSize));
+    private string _keyword = "";
+    private string _gridFilter = "";
+    private string _categoryFilter = "";
+    private string _statusFilter = "";
+
+    private string _appliedKeyword = "";
+    private string _appliedGrid = "";
+    private string _appliedCategory = "";
+    private string _appliedStatus = "";
+    private List<string> _grids = new();
+    private List<string> _categories = new();
+    private List<PersonRegistry> _items = new();
+    private bool _showEditor;
+    private PersonRegistry _edit = new();
+    private string? _saveError;
+    private bool _exportBusy;
+    private bool _deathCoexistConfirm;
+
+    private bool _showBatchImport;
+    private int _batchInputKey;
+    private IBrowserFile? _pendingBatchFile;
+    private string? _pendingBatchFileName;
+    private BatchImportPhase _batchPhase = BatchImportPhase.Pick;
+    private int _importProcessed;
+    private int _importTotal;
+    private string _importCaption = "";
+    private RegistryImportResult? _lastBatchResult;
+    private CancellationTokenSource? _importCts;
+
+    private double ImportPercent =>
+        _importTotal <= 0 ? 0 : Math.Clamp(100.0 * _importProcessed / _importTotal, 0, 100);
+
+    protected override void OnInitialized()
+    {
+        RefreshDirectoryOptions();
+        RunQuery();
+    }
+
+    private void RefreshDirectoryOptions()
+    {
+        _grids = Registry.GetDistinctGridCommunities();
+        _categories = Registry.GetDistinctSpecialCategories();
+    }
+
+    /// <summary>将当前筛选条件提交为已应用条件并拉取第 1 页。</summary>
+    private void RunQuery()
+    {
+        _appliedKeyword = _keyword?.Trim() ?? "";
+        _appliedGrid = _gridFilter ?? "";
+        _appliedCategory = _categoryFilter ?? "";
+        _appliedStatus = _statusFilter ?? "";
+        _page = 0;
+        Reload();
+    }
+
+    private void ReloadFromFilters()
+    {
+        _page = 0;
+        Reload();
+    }
+
+    private void Reload()
+    {
+        var result = Registry.Search(
+            string.IsNullOrWhiteSpace(_appliedGrid) ? null : _appliedGrid,
+            string.IsNullOrWhiteSpace(_appliedCategory) ? null : _appliedCategory,
+            string.IsNullOrWhiteSpace(_appliedKeyword) ? null : _appliedKeyword,
+            string.IsNullOrWhiteSpace(_appliedStatus) ? null : _appliedStatus,
+            _page,
+            _pageSize);
+        _total = result.Total;
+        _items = result.Items;
+    }
+
+    private void Prev()
+    {
+        _page = Math.Max(0, _page - 1);
+        Reload();
+    }
+
+    private void Next()
+    {
+        _page = Math.Min(_totalPages - 1, _page + 1);
+        Reload();
+    }
+
+    private void OpenNew()
+    {
+        _saveError = null;
+        _deathCoexistConfirm = false;
+        _edit = new PersonRegistry { Status = "有效", Id = 0, SpecialCategory = "", GridCommunity = "" };
+        _showEditor = true;
+    }
+
+    private void Edit(PersonRegistry p)
+    {
+        _saveError = null;
+        _deathCoexistConfirm = false;
+        Registry.EnsureDirectoryContains(RegistryService.DirCategory, p.SpecialCategory);
+        Registry.EnsureDirectoryContains(RegistryService.DirCommunity, p.GridCommunity);
+        RefreshDirectoryOptions();
+        _edit = new PersonRegistry
+        {
+            Id = p.Id,
+            IdNumber = p.IdNumber,
+            Name = p.Name,
+            Contact = p.Contact,
+            GridCommunity = p.GridCommunity,
+            SpecialCategory = p.SpecialCategory,
+            Status = p.Status is "有效" or "无效" ? p.Status : "有效",
+            Remark = p.Remark,
+            CancelDate = p.CancelDate,
+            CreatedAt = p.CreatedAt,
+            UpdatedAt = p.UpdatedAt
+        };
+        _showEditor = true;
+    }
+
+    private void CloseEditor()
+    {
+        _showEditor = false;
+        _edit = new PersonRegistry();
+        _saveError = null;
+        _deathCoexistConfirm = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saveError = null;
+        if (string.IsNullOrWhiteSpace(_edit.IdNumber) || string.IsNullOrWhiteSpace(_edit.Name))
+            return;
+        var r = Registry.Upsert(_edit, _deathCoexistConfirm);
+        if (!r.Ok && r.NeedsDeathCoexistConfirm)
+        {
+            if (!await JS.InvokeAsync<bool>("confirm", r.Error ?? "该人员已有死亡登记，是否继续保存？"))
+                return;
+            _deathCoexistConfirm = true;
+            r = Registry.Upsert(_edit, true);
+            _deathCoexistConfirm = false;
+        }
+
+        if (!r.Ok)
+        {
+            _saveError = r.Error;
+            return;
+        }
+
+        RefreshDirectoryOptions();
+        CloseEditor();
+        ReloadFromFilters();
+    }
+
+    private async Task DeletePerson(PersonRegistry p)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"确定从底册删除「{p.Name}」该条记录？"))
+            return;
+        Registry.DeleteById(p.Id);
+        ReloadFromFilters();
+    }
+
+    private void OpenBatchImportModal()
+    {
+        ResetBatchImportState(open: true);
+        _showBatchImport = true;
+    }
+
+    private void ResetBatchImportState(bool open)
+    {
+        _importCts?.Cancel();
+        _importCts?.Dispose();
+        _importCts = null;
+        _pendingBatchFile = null;
+        _pendingBatchFileName = null;
+        _batchPhase = BatchImportPhase.Pick;
+        _importProcessed = 0;
+        _importTotal = 0;
+        _importCaption = "";
+        _lastBatchResult = null;
+        _batchInputKey++;
+        if (!open)
+            _showBatchImport = false;
+    }
+
+    private void CloseBatchImportModal()
+    {
+        _importCts?.Cancel();
+        ResetBatchImportState(open: false);
+    }
+
+    private void OnBatchFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null)
+            return;
+        _pendingBatchFile = file;
+        _pendingBatchFileName = file.Name;
+        _batchPhase = BatchImportPhase.Ready;
+        _lastBatchResult = null;
+    }
+
+    private void ClearBatchFileSelection()
+    {
+        _pendingBatchFile = null;
+        _pendingBatchFileName = null;
+        _batchPhase = BatchImportPhase.Pick;
+        _batchInputKey++;
+        _lastBatchResult = null;
+    }
+
+    private void CancelBatchImport()
+    {
+        _importCts?.Cancel();
+    }
+
+    private async Task ConfirmBatchImportAsync()
+    {
+        if (_pendingBatchFile == null)
+            return;
+
+        _importCts = new CancellationTokenSource();
+        var token = _importCts.Token;
+        _batchPhase = BatchImportPhase.Importing;
+        _importProcessed = 0;
+        _importTotal = 0;
+        _importCaption = "正在读取文件…";
+        _lastBatchResult = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var read = _pendingBatchFile.OpenReadStream(50_000_000, token);
+            await using var ms = new MemoryStream();
+            await read.CopyToAsync(ms, token);
+            ms.Position = 0;
+
+            var progress = new Progress<RegistryImportProgress>(p =>
+            {
+                _ = InvokeAsync(() =>
+                {
+                    _importProcessed = p.Processed;
+                    _importTotal = p.Total;
+                    _importCaption = p.Caption;
+                    StateHasChanged();
+                });
+            });
+
+            var result = Registry.ImportFromExcel(ms, progress, token);
+            _lastBatchResult = result;
+            _batchPhase = BatchImportPhase.Done;
+
+            if (result.CanImportRows)
+            {
+                RefreshDirectoryOptions();
+                ReloadFromFilters();
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
+        {
+            _batchPhase = string.IsNullOrEmpty(_pendingBatchFileName) ? BatchImportPhase.Pick : BatchImportPhase.Ready;
+            _importCaption = "已取消";
+            _lastBatchResult = null;
+        }
+        catch (Exception ex)
+        {
+            _lastBatchResult = new RegistryImportResult();
+            _lastBatchResult.FatalMessages.Add(ex.Message);
+            _batchPhase = BatchImportPhase.Done;
+        }
+    }
+
+    private async Task ExportFailureReportAsync()
+    {
+        if (_lastBatchResult == null || _lastBatchResult.Failures.Count == 0)
+            return;
+        var bytes = RegistryService.BuildFailureReportBytes(_lastBatchResult.Failures);
+        var b64 = Convert.ToBase64String(bytes);
+        var name = $"导入失败明细_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+        await JS.InvokeVoidAsync("icaDownloadFromBase64", name,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", b64);
+    }
+
+    private async Task ExportRosterAsync()
+    {
+        _exportBusy = true;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            var bytes = Registry.ExportRegistryFiltered(
+                string.IsNullOrWhiteSpace(_gridFilter) ? null : _gridFilter.Trim(),
+                string.IsNullOrWhiteSpace(_categoryFilter) ? null : _categoryFilter.Trim(),
+                string.IsNullOrWhiteSpace(_keyword) ? null : _keyword.Trim(),
+                string.IsNullOrWhiteSpace(_statusFilter) ? null : _statusFilter.Trim());
+            var b64 = Convert.ToBase64String(bytes);
+            await JS.InvokeVoidAsync("icaDownloadFromBase64", $"人员底册导出_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", b64);
+        }
+        finally
+        {
+            _exportBusy = false;
+        }
+    }
+
+    private static string MaskId(string? id)
+    {
+        if (string.IsNullOrEmpty(id) || id.Length < 10)
+            return id ?? "—";
+        var keep = 4;
+        var head = Math.Min(6, id.Length - keep);
+        var starsLen = Math.Max(0, id.Length - head - keep);
+        return id[..head] + new string('*', starsLen) + id[^keep..];
+    }
+}

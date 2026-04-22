@@ -1,0 +1,29 @@
+# Build
+[Bb]in/
+[Oo]bj/
+out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / VS Code / Rider
+.vs/
+.idea/
+*.rsuser
+
+# SQLite 与常见本地数据库文件（勿将业务数据提交到仓库）
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.db3
+
+# 日志与临时
+*.log
+*.tmp
+*.temp
+
+# 发布产物（若在本机目录发布）
+publish/

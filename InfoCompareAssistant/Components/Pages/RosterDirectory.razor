@@ -1,0 +1,140 @@
+@page "/roster/directory"
+@rendermode InteractiveServer
+@inject RegistryService Registry
+@inject IJSRuntime JS
+
+<PageTitle>身份与社区目录</PageTitle>
+
+<div class="space-y-6 fade-in max-w-5xl">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800 m-0">身份与社区目录</h2>
+            <p class="text-sm text-slate-500 m-0 mt-1">
+                维护「人员类别」与「所属网格/社区」选项；底册新增与编辑仅可从这些下拉项中选择。删除前须确保无底册记录引用该项。
+            </p>
+        </div>
+        <a href="/roster" class="inline-flex items-center bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 no-underline shrink-0">
+            <i class="fa-solid fa-address-book mr-2 text-emerald-600"></i>返回人员底册
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[280px]">
+            <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                <h3 class="text-base font-bold text-slate-800 m-0">人员类别（身份）</h3>
+                <p class="text-xs text-slate-500 m-0 mt-1">对应底册中的「特殊类别」下拉项</p>
+            </div>
+            <div class="p-5 flex flex-col flex-1 min-h-0">
+                <div class="flex gap-2 mb-3">
+                    <input type="text" @bind="_newCategory" placeholder="输入新类别名称"
+                           class="flex-1 min-w-0 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none" />
+                    <button type="button" @onclick="AddCategory"
+                            class="shrink-0 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700">添加</button>
+                </div>
+                @if (!string.IsNullOrEmpty(_dirErrorCat))
+                {
+                    <p class="text-sm text-rose-600 mb-2 m-0">@_dirErrorCat</p>
+                }
+                <ul class="flex-1 min-h-[200px] max-h-[420px] overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-100">
+                    @foreach (var it in _dirCategoryRows)
+                    {
+                        <li class="flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-700" @key="it.Id">
+                            <span class="truncate font-medium" title="@it.Name">@it.Name</span>
+                            <button type="button" @onclick="() => RemoveDirectoryAsync(it)"
+                                    class="text-rose-600 text-xs font-medium hover:underline shrink-0">删除</button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[280px]">
+            <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                <h3 class="text-base font-bold text-slate-800 m-0">所属网格 / 社区</h3>
+                <p class="text-xs text-slate-500 m-0 mt-1">对应底册中的「所属网格」下拉项</p>
+            </div>
+            <div class="p-5 flex flex-col flex-1 min-h-0">
+                <div class="flex gap-2 mb-3">
+                    <input type="text" @bind="_newGrid" placeholder="输入网格或社区名称"
+                           class="flex-1 min-w-0 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none" />
+                    <button type="button" @onclick="AddGrid"
+                            class="shrink-0 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700">添加</button>
+                </div>
+                @if (!string.IsNullOrEmpty(_dirErrorGrid))
+                {
+                    <p class="text-sm text-rose-600 mb-2 m-0">@_dirErrorGrid</p>
+                }
+                <ul class="flex-1 min-h-[200px] max-h-[420px] overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-100">
+                    @foreach (var it in _dirCommunityRows)
+                    {
+                        <li class="flex items-center justify-between gap-3 px-4 py-3 text-sm text-slate-700" @key="it.Id">
+                            <span class="truncate font-medium" title="@it.Name">@it.Name</span>
+                            <button type="button" @onclick="() => RemoveDirectoryAsync(it)"
+                                    class="text-rose-600 text-xs font-medium hover:underline shrink-0">删除</button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<RosterDirectoryItem> _dirCategoryRows = new();
+    private List<RosterDirectoryItem> _dirCommunityRows = new();
+    private string _newCategory = "";
+    private string _newGrid = "";
+    private string? _dirErrorCat;
+    private string? _dirErrorGrid;
+
+    protected override void OnInitialized() => ReloadLists();
+
+    private void ReloadLists()
+    {
+        _dirCategoryRows = Registry.ListDirectoryItems(RegistryService.DirCategory);
+        _dirCommunityRows = Registry.ListDirectoryItems(RegistryService.DirCommunity);
+    }
+
+    private void AddCategory()
+    {
+        _dirErrorCat = null;
+        var (ok, err) = Registry.AddDirectoryItem(RegistryService.DirCategory, _newCategory);
+        if (!ok)
+        {
+            _dirErrorCat = err;
+            return;
+        }
+
+        _newCategory = "";
+        ReloadLists();
+    }
+
+    private void AddGrid()
+    {
+        _dirErrorGrid = null;
+        var (ok, err) = Registry.AddDirectoryItem(RegistryService.DirCommunity, _newGrid);
+        if (!ok)
+        {
+            _dirErrorGrid = err;
+            return;
+        }
+
+        _newGrid = "";
+        ReloadLists();
+    }
+
+    private async Task RemoveDirectoryAsync(RosterDirectoryItem it)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"确定删除目录项「{it.Name}」？"))
+            return;
+        var (ok, err) = Registry.DeleteDirectoryItem(it.Id);
+        if (!ok)
+        {
+            await JS.InvokeVoidAsync("alert", err ?? "删除失败");
+            return;
+        }
+
+        ReloadLists();
+        await InvokeAsync(StateHasChanged);
+    }
+}
