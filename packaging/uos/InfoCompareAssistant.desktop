@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=信息比对助手
+Name[zh_CN]=信息比对助手
+GenericName=人员与死亡名单比对
+Comment=单机版信息比对工具
+Exec=/opt/InfoCompareAssistant/InfoCompareAssistant
+# 若将程序装在其他目录，请同步修改上一行，或把本文件中的 Exec 改为可执行文件路径。
+# Icon=（可选）/opt/InfoCompareAssistant/wwwroot/logo.png
+Terminal=false
+Type=Application
+Categories=Office;Database;

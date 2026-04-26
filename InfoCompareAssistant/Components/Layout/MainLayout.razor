@@ -1,35 +1,34 @@
 ﻿@inherits LayoutComponentBase
-@implements IDisposable
 @inject NavigationManager Nav
 
 <div class="bg-[#F8FAFC] text-slate-800 font-sans h-screen flex overflow-hidden">
-    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 shrink-0">
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 shrink-0 sidebar-stable">
         <div class="h-20 flex items-center justify-center border-b border-slate-800 px-2">
             <img src="logo.ico" alt="信息比对助手" class="w-10 h-10 object-contain rounded-xl mr-3 shadow-lg shadow-blue-600/20 ring-1 ring-slate-700/50 shrink-0 bg-slate-800" width="40" height="40" />
             <h1 class="text-lg font-bold tracking-wider">人员排查系统</h1>
         </div>
         <nav class="flex-1 px-4 py-6 space-y-3">
             <NavLink href="/" Match="NavLinkMatch.All"
-                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:bg-slate-800 hover:text-white"
-                     ActiveClass="!bg-blue-600 !text-white shadow-md scale-105 hover:!bg-blue-600">
+                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-colors duration-200 text-slate-400 hover:bg-slate-800 hover:text-white"
+                     ActiveClass="!bg-blue-600 !text-white shadow-md hover:!bg-blue-600">
                 <i class="fa-solid fa-chart-pie w-6 opacity-90"></i>
                 <span class="font-medium">首页概览</span>
             </NavLink>
             <NavLink href="/compare"
-                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:bg-slate-800 hover:text-white"
-                     ActiveClass="!bg-blue-600 !text-white shadow-md scale-105 hover:!bg-blue-600">
+                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-colors duration-200 text-slate-400 hover:bg-slate-800 hover:text-white"
+                     ActiveClass="!bg-blue-600 !text-white shadow-md hover:!bg-blue-600">
                 <i class="fa-solid fa-file-import w-6 opacity-90"></i>
                 <span class="font-medium">一键数据比对</span>
             </NavLink>
             <NavLink href="/roster" Match="NavLinkMatch.All"
-                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:bg-slate-800 hover:text-white"
-                     ActiveClass="!bg-blue-600 !text-white shadow-md scale-105 hover:!bg-blue-600">
+                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-colors duration-200 text-slate-400 hover:bg-slate-800 hover:text-white"
+                     ActiveClass="!bg-blue-600 !text-white shadow-md hover:!bg-blue-600">
                 <i class="fa-solid fa-address-book w-6 opacity-90"></i>
                 <span class="font-medium">人员底册管理</span>
             </NavLink>
             <NavLink href="/roster/directory" Match="NavLinkMatch.All"
-                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-slate-400 hover:bg-slate-800 hover:text-white"
-                     ActiveClass="!bg-blue-600 !text-white shadow-md scale-105 hover:!bg-blue-600">
+                     class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-colors duration-200 text-slate-400 hover:bg-slate-800 hover:text-white"
+                     ActiveClass="!bg-blue-600 !text-white shadow-md hover:!bg-blue-600">
                 <i class="fa-solid fa-list-ul w-6 opacity-90"></i>
                 <span class="font-medium">身份与社区目录</span>
             </NavLink>
@@ -103,13 +102,4 @@
         _ => "from-slate-500 to-slate-800"
     };
 
-    protected override void OnInitialized() =>
-        Nav.LocationChanged += OnLocationChanged;
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
-
-    public void Dispose()
-    {
-        Nav.LocationChanged -= OnLocationChanged;
-    }
 }

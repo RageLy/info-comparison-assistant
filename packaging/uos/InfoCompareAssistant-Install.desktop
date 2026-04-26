@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=一键安装
+Name[zh_CN]=一键安装
+Comment=将信息比对助手安装到本机
+# %d = 本 .desktop 所在目录（与安装包在同一路径，勿单独移动本文件到别处）
+Icon=application-x-executable
+Terminal=false
+# 用 bash 先 cd 到安装包目录，再跑图形化安装器（pkexec/终端）
+# 使用 bash 显式执行，不依赖 sh 的 +x 位（zip 解压后可能丢执行权限）
+Exec=bash -c "cd \"%d\" && bash ./install-gui.sh"
+# 不标记 TryExec=pkexec，部分环境没有 pkexec 时仍可走终端

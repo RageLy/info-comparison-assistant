@@ -27,3 +27,5 @@ out/
 
 # 发布产物（若在本机目录发布）
 publish/
+packaging/uos/build/
+packaging/uos/out/
